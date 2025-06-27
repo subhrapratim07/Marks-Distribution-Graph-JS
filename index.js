@@ -1,35 +1,34 @@
 const { ChartJSNodeCanvas } = require('chartjs-node-canvas');
 const fs = require('fs');
+const XLSX = require('xlsx');
 
 // Constants
-const NUM_STUDENTS = 40;
-const SUBJECTS = 4;
-const SUBJECT_NAMES = ['Math', 'Physics', 'Chemistry', 'CS'];
 const WIDTH = 1400;
 const HEIGHT = 600;
+const MAX_TOTAL_MARKS = 400;
+const SUBJECT_NAMES = ['Math', 'Physics', 'Chemistry', 'CS'];
 
-// Generate random marks for 40 students across 4 subjects
-let marksData = [];
-for (let i = 0; i < NUM_STUDENTS; i++) {
-    let studentMarks = [];
-    for (let j = 0; j < SUBJECTS; j++) {
-        studentMarks.push(Math.floor(Math.random() * 101)); // 0 to 100
-    }
-    marksData.push(studentMarks);
-}
+// Read Excel file
+const workbook = XLSX.readFile('./student_marks.xlsx');
+const sheetName = workbook.SheetNames[0];
+const sheet = workbook.Sheets[sheetName];
+const jsonData = XLSX.utils.sheet_to_json(sheet);
 
-// Count students with average marks above 90 or below 40
-let above90 = 0, below40 = 0;
+// Extract marks data
+const marksData = jsonData.map(student => SUBJECT_NAMES.map(subject => student[subject]));
+
+// Count students with total marks above 360 and below 160
+let above360 = 0, below160 = 0;
 marksData.forEach(student => {
-    const avg = student.reduce((a, b) => a + b) / SUBJECTS;
-    if (avg > 90) above90++;
-    if (avg < 40) below40++;
+    const total = student.reduce((a, b) => a + b, 0);
+    if (total > 360) above360++;
+    if (total < 160) below160++;
 });
 
-console.log(`Students scoring average above 90: ${above90}`);
-console.log(`Students scoring average below 40: ${below40}`);
+console.log(`Students scoring total above 360 (90% of 400): ${above360}`);
+console.log(`Students scoring total below 160 (40% of 400): ${below160}`);
 
-// Prepare chart datasets: one dataset per subject
+// Create datasets for stacked chart
 const subjectDatasets = SUBJECT_NAMES.map((subject, subjIndex) => ({
     label: subject,
     data: marksData.map(student => student[subjIndex]),
@@ -38,14 +37,14 @@ const subjectDatasets = SUBJECT_NAMES.map((subject, subjIndex) => ({
     borderWidth: 1
 }));
 
-// Setup ChartJS with NodeCanvas
+// Setup ChartJSNodeCanvas
 const chartJSNodeCanvas = new ChartJSNodeCanvas({ width: WIDTH, height: HEIGHT });
 
 async function generateChart() {
     const config = {
         type: 'bar',
         data: {
-            labels: Array.from({ length: NUM_STUDENTS }, (_, i) => `Student ${i + 1}`),
+            labels: jsonData.map(student => student.Name),
             datasets: subjectDatasets
         },
         options: {
@@ -53,7 +52,7 @@ async function generateChart() {
             plugins: {
                 title: {
                     display: true,
-                    text: 'Grouped Subject-wise Marks Distribution (40 Students)'
+                    text: 'Total Marks Distribution (Stacked by Subject)'
                 },
                 legend: {
                     position: 'top'
@@ -61,7 +60,7 @@ async function generateChart() {
             },
             scales: {
                 x: {
-                    stacked: false,
+                    stacked: true,
                     ticks: {
                         maxRotation: 90,
                         minRotation: 90,
@@ -69,11 +68,12 @@ async function generateChart() {
                     }
                 },
                 y: {
+                    stacked: true,
                     beginAtZero: true,
-                    max: 100,
+                    max: MAX_TOTAL_MARKS,
                     title: {
                         display: true,
-                        text: 'Marks'
+                        text: 'Total Marks (out of 400)'
                     }
                 }
             }
@@ -81,8 +81,8 @@ async function generateChart() {
     };
 
     const buffer = await chartJSNodeCanvas.renderToBuffer(config);
-    fs.writeFileSync('./grouped-subject-distribution.png', buffer);
-    console.log('Chart saved as grouped-subject-distribution.png');
+    fs.writeFileSync('./stacked-total-marks-distribution.png', buffer);
+    console.log('Chart saved as stacked-total-marks-distribution.png');
 }
 
 generateChart();
