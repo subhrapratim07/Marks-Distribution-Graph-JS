@@ -42,43 +42,56 @@ const chartJSNodeCanvas = new ChartJSNodeCanvas({ width: WIDTH, height: HEIGHT }
 
 async function generateChart() {
     const config = {
-        type: 'bar',
-        data: {
-            labels: jsonData.map(student => student.Name),
-            datasets: subjectDatasets
+    type: 'bar',
+    data: {
+        labels: jsonData.map(student => student.Name),
+        datasets: subjectDatasets
+    },
+    options: {
+        responsive: false,
+        plugins: {
+            title: {
+                display: true,
+                text: 'Total Marks Distribution (Stacked by Subject)'
+            },
+            legend: {
+                position: 'top'
+            }
         },
-        options: {
-            responsive: false,
-            plugins: {
-                title: {
-                    display: true,
-                    text: 'Total Marks Distribution (Stacked by Subject)'
-                },
-                legend: {
-                    position: 'top'
+        scales: {
+            x: {
+                stacked: true,
+                ticks: {
+                    maxRotation: 90,
+                    minRotation: 90,
+                    autoSkip: false
                 }
             },
-            scales: {
-                x: {
-                    stacked: true,
-                    ticks: {
-                        maxRotation: 90,
-                        minRotation: 90,
-                        autoSkip: false
-                    }
-                },
-                y: {
-                    stacked: true,
-                    beginAtZero: true,
-                    max: MAX_TOTAL_MARKS,
-                    title: {
-                        display: true,
-                        text: 'Total Marks (out of 400)'
-                    }
+            y: {
+                stacked: true,
+                beginAtZero: true,
+                max: MAX_TOTAL_MARKS,
+                title: {
+                    display: true,
+                    text: 'Total Marks (out of 400)'
                 }
             }
         }
-    };
+    },
+    plugins: [
+        {
+            id: 'whiteBackground',
+            beforeDraw: (chart) => {
+                const { ctx, width, height } = chart;
+                ctx.save();
+                ctx.fillStyle = 'white'; // Set solid white background
+                ctx.fillRect(0, 0, width, height);
+                ctx.restore();
+            }
+        }
+    ]
+};
+
 
     const buffer = await chartJSNodeCanvas.renderToBuffer(config);
     fs.writeFileSync('./stacked-total-marks-distribution.png', buffer);
